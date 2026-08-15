@@ -43,7 +43,11 @@ def get_pedidos():
         nota_fiscal = emissao.get('numero', 'Pendente') if isinstance(emissao, dict) else 'Pendente'
         chave_nf = emissao.get('chave', '') if isinstance(emissao, dict) else ''
         
-        telefone = "Buscando..." 
+        endereco = o.get('enderecoDestinatario', {})
+        celular = endereco.get('celular', '')
+        tel = endereco.get('telefone', '')
+        telefone = celular if celular else tel
+        if not telefone: telefone = "Sem Contato"
         link_nf = f"https://www.nfe.fazenda.gov.br/portal/consultaRecaptcha.aspx?tipoConsulta=resumo&tipoConteudo=7PhJ%2BgAVw2g=&chNFe={chave_nf}" if chave_nf else "#"
         
         resultado_tabelado.append({
