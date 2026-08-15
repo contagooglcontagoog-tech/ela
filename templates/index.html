@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eShip UI - Onyx</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { 
+            background-color: #0f172a; 
+            color: #f8fafc; 
+            font-family: 'Inter', sans-serif; 
+            background-image: radial-gradient(circle at 50% -20%, #1e293b, #0f172a);
+        }
+        .glass {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .btn-glow {
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+            transition: all 0.3s ease;
+        }
+        .btn-glow:hover { 
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.6); 
+            transform: translateY(-2px);
+        }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen p-8 flex flex-col items-center">
+    <div class="w-full max-w-7xl">
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-indigo-500">
+                    Central eShip
+                </h1>
+                <p class="text-slate-400 mt-1 font-semibold tracking-wide uppercase text-sm">Controle de Expedição & NFe</p>
+            </div>
+            <button onclick="carregarDados()" class="glass btn-glow bg-slate-800 text-sky-400 px-6 py-3 rounded-xl font-bold flex items-center gap-3">
+                <svg id="loading-icon" class="w-5 h-5 hidden spinner" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Puxar Tabela (API)
+            </button>
+        </header>
+
+        <div class="glass rounded-2xl overflow-hidden shadow-2xl border border-slate-700/50">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800/80 text-slate-300 text-xs uppercase tracking-widest">
+                            <th class="p-5 border-b border-slate-700">Pedido</th>
+                            <th class="p-5 border-b border-slate-700">Cliente</th>
+                            <th class="p-5 border-b border-slate-700">Contato</th>
+                            <th class="p-5 border-b border-slate-700">Transportadora</th>
+                            <th class="p-5 border-b border-slate-700">Status</th>
+                            <th class="p-5 border-b border-slate-700">Nota Fiscal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-body" class="divide-y divide-slate-700/50 text-slate-300">
+                        <tr>
+                            <td colspan="6" class="p-10 text-center text-slate-500 text-lg">
+                                Clique no botão acima para conectar com a eShip e montar a tabela.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function carregarDados() {
+            const tbody = document.getElementById('tabela-body');
+            const icon = document.getElementById('loading-icon');
+            
+            icon.classList.remove('hidden');
+            tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-sky-400 font-semibold animate-pulse">Acessando API da eShip...</td></tr>';
+            
+            try {
+                const res = await fetch('/api/pedidos');
+                const data = await res.json();
+                
+                tbody.innerHTML = '';
+                
+                if(data.erro) {
+                    tbody.innerHTML = \`<tr><td colspan="6" class="p-10 text-center text-red-500 font-bold">\${data.erro}</td></tr>\`;
+                    return;
+                }
+
+                if(data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="p-10 text-center text-slate-500">Nenhum dado retornado ou formato não suportado.</td></tr>';
+                    return;
+                }
+
+                data.forEach(item => {
+                    const isEmitido = (item.status || '').toLowerCase().includes('emitido');
+                    const statusColor = isEmitido ? 'text-emerald-400 bg-emerald-400/10 border border-emerald-400/20' : 'text-amber-400 bg-amber-400/10 border border-amber-400/20';
+                    
+                    const nfLink = item.chave_nf !== '' && item.nota_fiscal !== 'N/A' 
+                        ? \`<a href="\${item.link_nf}" target="_blank" class="text-sky-400 hover:text-sky-300 underline font-mono">\${item.nota_fiscal}</a>\`
+                        : \`<span class="text-slate-500 font-mono">\${item.nota_fiscal}</span>\`;
+
+                    const row = \`
+                        <tr class="hover:bg-slate-800/50 transition-colors">
+                            <td class="p-5 font-mono text-sm text-sky-100">\${item.pedido}</td>
+                            <td class="p-5 font-semibold text-white">\${item.cliente}</td>
+                            <td class="p-5 text-sm text-slate-400">\${item.telefone}</td>
+                            <td class="p-5 text-sm">\${item.transportadora}</td>
+                            <td class="p-5">
+                                <span class="px-3 py-1 rounded-full text-xs font-bold shadow-sm \${statusColor}">
+                                    \${item.status}
+                                </span>
+                            </td>
+                            <td class="p-5">\${nfLink}</td>
+                        </tr>
+                    \`;
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+            } catch (err) {
+                tbody.innerHTML = \`<tr><td colspan="6" class="p-10 text-center text-red-400 font-bold">Falha crítica: \${err.message}</td></tr>\`;
+            } finally {
+                icon.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
